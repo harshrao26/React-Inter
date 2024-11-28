@@ -1,8 +1,13 @@
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Disclosure, Menu, Transition } from "@headlessui/react";
 import { Bars3Icon, BellIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import axios from "axios";
+
 import Categories from "./Components/Categories";
 import AllStores from "./Components/AllStores";
+import Filters from "./Components/Filters";
+
+import { useLocation } from "react-router-dom";
 
 const user = {
   name: "Tom Cook",
@@ -10,18 +15,53 @@ const user = {
   imageUrl:
     "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
 };
-const navigation = [
-  { name: "Stores", href: "#", current: true },
-];
-const userNavigation = [
-  
-];
+const navigation = [{ name: "Stores", href: "#", current: true }];
+const userNavigation = [];
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
 }
 
 export default function App() {
+  const [filters, setFilters] = useState({});
+  const [stores, setStores] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  const location = useLocation();
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await axios.get("http://localhost:3001/categories");
+        setCategories(response.data);
+      } catch (error) {
+        console.error("Error fetching categories", error);
+      }
+    };
+
+    const fetchStores = async () => {
+      try {
+        const response = await axios.get("http://localhost:3001/stores", {
+          params: filters,
+        });
+        setStores(response.data);
+      } catch (error) {
+        console.error("Error fetching stores", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+    fetchStores();
+  }, [filters]);
+
+
+  if (loading) {
+    return <p>Loading stores...</p>;
+  }
+
   return (
     <>
       <div className="min-h-full">
@@ -205,10 +245,12 @@ export default function App() {
               </h1>
             </div>
           </header>
-          <main className="">
-            <div className="mx-auto grid grid-cols-3 grid-flow-col max-w-7xl sm:px-6 lg:px-8">
-              <Categories className="bg-white shadow-xl min-h-4" />
-              <AllStores className="bg-white shadow-xl col-span-2 min-h-4" />
+          <main className="sm:px-6 lg:px-8">
+            <Filters categories={categories} onChange={setFilters} />
+
+            <div className=" flex ">
+              <Categories className="" />
+              <AllStores stores={stores} className="" />
             </div>
           </main>
         </div>
