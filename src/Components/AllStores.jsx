@@ -1,60 +1,118 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { FaSpinner } from "react-icons/fa"; // Importing spinner icon
+import { FaSpinner, FaBookmark, FaRegBookmark } from "react-icons/fa"; // Correct icons here
+import { useLocation } from "react-router-dom"; // To access query parameters from the URL
 
 const AllStores = () => {
-  const [stores, setStores] = useState([]);
+  const [stores, setStores] = useState([]); // Stores list
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true); // To track if there are more stores to load
-  const loaderRef = useRef(null); // To detect when the user reaches the bottom
+  const [page, setPage] = useState(1); // Track the current page for pagination
+  const [hasMore, setHasMore] = useState(true); // Check if more stores are available to load
+  const [bookmarkedStores, setBookmarkedStores] = useState([]); // For storing bookmarked stores
+  const observerRef = useRef(null); // For Intersection Observer
 
-  // Fetch stores function
+  const API_BASE_URL = "http://localhost:3001";
+
+  // To watch changes in URL
+  const location = useLocation();
+
+  // Fetch the list of bookmarked stores from localStorage
+  const getBookmarkedStores = () => {
+    const storedBookmarks =
+      JSON.parse(localStorage.getItem("bookmarkedStores")) || [];
+    setBookmarkedStores(storedBookmarks);
+  };
+
+  // Bookmark a store
+  const handleBookmark = (store) => {
+    const updatedBookmarks = [...bookmarkedStores, store];
+    setBookmarkedStores(updatedBookmarks);
+    localStorage.setItem("bookmarkedStores", JSON.stringify(updatedBookmarks));
+  };
+
+  // Remove bookmark for a store
+  const handleRemoveBookmark = (storeId) => {
+    const updatedBookmarks = bookmarkedStores.filter(
+      (store) => store.id !== storeId
+    );
+    setBookmarkedStores(updatedBookmarks);
+    localStorage.setItem("bookmarkedStores", JSON.stringify(updatedBookmarks));
+  };
+
+  // Fetch stores from the API based on URL query params
   const fetchStores = async () => {
-    if (loading) return; // Prevent multiple requests if already loading
+    if (loading || !hasMore) return; // Prevent duplicate requests or if no more data
 
     setLoading(true);
     try {
-      const response = await axios.get(
-        `http://localhost:3001/stores?_page=${page}&_limit=20`
-      );
-      setStores((prevStores) => [...prevStores, ...response.data]); // Append new stores to the list
+      // Extract query params from URL (e.g., ?name_like=s)
+      const queryParams = new URLSearchParams(location.search);
+      queryParams.set("_page", page); // Add pagination to the query params
+      queryParams.set("_limit", 20); // Limit to 20 items per page
 
-      // If fewer than 20 stores are returned, no more stores to load
-      if (response.data.length < 20) {
+      // Fetch stores based on query parameters
+      const response = await axios.get(
+        `${API_BASE_URL}/stores?${queryParams.toString()}`
+      );
+
+      // If response is empty, there are no more stores to load
+      if (response.data.length === 0) {
         setHasMore(false);
+      } else {
+        // Append the newly fetched stores to the list
+        setStores((prevStores) => [...prevStores, ...response.data]);
+
+        // If the number of stores returned is less than the limit, there are no more stores
+        setHasMore(response.data.length === 20);
       }
     } catch (err) {
-      setError(err.message || "An error occurred while fetching stores.");
+      setError("Failed to load stores.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Scroll listener to detect when user reaches the bottom
-  const handleScroll = () => {
-    if (loaderRef.current) {
-      const bottom = loaderRef.current.getBoundingClientRect().bottom;
-      if (bottom <= window.innerHeight && hasMore && !loading) {
-        // User has reached the bottom of the page
-        setPage((prevPage) => prevPage + 1); // Increment the page number to fetch the next set of stores
-      }
-    }
-  };
-
+  // Infinite Scroll using Intersection Observer
   useEffect(() => {
-    // Fetch stores when page changes
-    fetchStores();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          setPage((prevPage) => prevPage + 1); // Move to next page
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    if (observerRef.current) {
+      observer.observe(observerRef.current); // Start observing the scroll target
+    }
+
+    return () => {
+      if (observerRef.current) observer.unobserve(observerRef.current); // Cleanup observer
+    };
+  }, [hasMore, loading]);
+
+  // Fetch stores when `page` changes or when the query parameters change in the URL
+useEffect(() => {
+  // Reset page and other states when URL changes
+  setPage(1);
+  setStores([]); // Clear the previous stores immediately
+  setHasMore(true); // Reset the "hasMore" flag for fresh pagination
+  setError(null); // Clear any previous errors
+}, [location.search]);
+
+  // Fetch stores when the `page` changes
+  useEffect(() => {
+    if (page === 1 || hasMore) {
+      fetchStores(); // Initial fetch when page is 1 or URL changes
+    }
   }, [page]);
 
+  // Fetch the bookmarked stores on initial load
   useEffect(() => {
-    // Add scroll event listener
-    window.addEventListener("scroll", handleScroll);
-
-    // Cleanup the event listener on unmount
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [loading, hasMore]);
+    getBookmarkedStores();
+  }, []);
 
   if (loading && page === 1) {
     return (
@@ -70,28 +128,47 @@ const AllStores = () => {
   }
 
   return (
-    <div className="stores-list">
+    <div className="stores-list ">
       <h2 className="text-xl font-bold mb-4">Stores</h2>
-      <ul className="space-y-4">
+      <ul className="flex flex-wrap gap-4 ">
         {stores.map((store) => (
           <li
             key={store.id}
-            className="flex items-center p-4 border rounded hover:shadow"
+            className="flex flex-col items-center relative h-48 w-80 justify-center border-[1px] border-zinc-100 rounded-xl shadow p-6 "
           >
             <img
-              src={store.icon || "https://via.placeholder.com/50"}
+              src={store.logo || "https://via.placeholder.com/50"}
               alt={store.name}
-              className="w-12 h-12 rounded-full mr-4"
+              className="w-12 h-12 rounded-full"
             />
-            <div>
-              <h3 className="font-medium">{store.name}</h3>
-              <p className="text-sm text-gray-500">
-                {store.description || "No description available"}
+            <div className="flex flex-col gap-2 ">
+              <h3 className="font-medium w-full text-center">{store.name}</h3>
+              <p className="text-sm text-gray-500 w-full text-center">
+                Upto ₹{store.cashback_amount || "No description available"}{" "}
+                Cashback 
               </p>
-              <p className="text-sm text-gray-400">
-                Visits: {store.visits || 0}
-              </p>
+              <h1 className="flex  w-full items-center justify-center ">
+                <a href={store.homepage} target="_blank">
+                  <p className="text-sm text-white rounded-2xl bg-blue-700 py-2 px-4 flex items-center justify-center ">
+                    Shop Now
+                  </p>
+                </a>
+              </h1>
             </div>
+            <button
+              onClick={() =>
+                bookmarkedStores.some((item) => item.id === store.id)
+                  ? handleRemoveBookmark(store.id)
+                  : handleBookmark(store)
+              }
+              className="text-blue-500 hover:text-blue-700 absolute right-4 top-2"
+            >
+              {bookmarkedStores.some((item) => item.id === store.id) ? (
+                <FaBookmark />
+              ) : (
+                <FaRegBookmark />
+              )}
+            </button>
           </li>
         ))}
       </ul>
@@ -104,8 +181,8 @@ const AllStores = () => {
         </div>
       )}
 
-      {/* Empty loader ref div */}
-      <div ref={loaderRef} />
+      {/* Intersection Observer Target */}
+      <div ref={observerRef} style={{ height: "1px" }}></div>
     </div>
   );
 };

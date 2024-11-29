@@ -11,7 +11,14 @@ const Categories = () => {
     const fetchCategories = async () => {
       try {
         const response = await axios.get("http://localhost:3001/categories");
-        setCategories(response.data); // Axios automatically parses JSON
+
+        // Filter out duplicate categories based on `id`
+        const uniqueCategories = response.data.filter(
+          (category, index, self) =>
+            index === self.findIndex((c) => c.id === category.id)
+        );
+
+        setCategories(uniqueCategories); // Set unique categories
       } catch (err) {
         setError(err.message || "An error occurred while fetching categories.");
       } finally {
@@ -31,12 +38,12 @@ const Categories = () => {
   }
 
   return (
-    <div className="categories-list">
+    <div className="categories-list mr-4">
       <h2 className="text-xl font-bold mb-4">Categories</h2>
-      <ul className="space-y-4">
+      <ul className="space-y-4 w-64">
         {categories.map((category) => (
           <li
-            key={category.id}
+            key={category.id} // Ensure `id` is unique
             className="flex items-center p-4 border rounded hover:shadow"
           >
             <img
@@ -46,9 +53,9 @@ const Categories = () => {
             />
             <div>
               <h3 className="font-medium">{category.name}</h3>
-              <p className="text-sm text-gray-500">
+              {/* <p className="text-sm text-gray-500">
                 {category.store_count} stores • {category.visits} visits
-              </p>
+              </p> */}
             </div>
           </li>
         ))}

@@ -21,6 +21,7 @@ const Filters = ({ categories, onChange }) => {
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
 
+    // Update filter state based on the URL query parameters
     setFilters({
       search: queryParams.get("name_like") || "",
       category: queryParams.get("cats") || "",
@@ -32,45 +33,96 @@ const Filters = ({ categories, onChange }) => {
       sortBy: queryParams.get("_sort") || "name",
       sortOrder: queryParams.get("_order") || "asc",
     });
-  }, [location.search]);
+
+    // Trigger the parent callback to re-fetch data (if necessary)
+    onChange(filters);
+  }, [location.search, onChange]); // Re-run whenever the URL changes
 
   // Function to update the URL query string for the selected filter
   const handleFilterChange = (key, value) => {
     const updatedFilters = { ...filters, [key]: value };
     setFilters(updatedFilters);
 
-    // Start the base URL
-    let searchParams = new URLSearchParams();
+    // Start with the current URL query parameters
+    const searchParams = new URLSearchParams(location.search);
 
-    // Conditionally add filters to the searchParams
-    if (key === "cashbackEnabled" && value) {
-      searchParams.set("cashback_enabled", "1");
-    } else if (key === "isPromoted" && value) {
-      searchParams.set("is_promoted", "1");
-    } else if (key === "isSharable" && value) {
-      searchParams.set("is_sharable", "1");
+    // Conditionally add or remove filters based on the value
+    if (key === "cashbackEnabled") {
+      if (value) {
+        searchParams.set("cashback_enabled", "1");
+      } else {
+        searchParams.delete("cashback_enabled");
+      }
     } else if (key === "search" && value) {
       searchParams.set("name_like", value);
+    } else if (key === "search" && !value) {
+      searchParams.delete("name_like");
     } else if (key === "category" && value) {
       searchParams.set("cats", value);
+    } else if (key === "category" && !value) {
+      searchParams.delete("cats");
     } else if (key === "status" && value) {
       searchParams.set("status", value);
+    } else if (key === "status" && !value) {
+      searchParams.delete("status");
     } else if (key === "alphabet" && value) {
-      searchParams.set("name_like", value);
+      searchParams.set("alphabet", value);
+    } else if (key === "alphabet" && !value) {
+      searchParams.delete("alphabet");
     } else if (key === "sortBy" && value) {
       searchParams.set("_sort", value);
+    } else if (key === "sortBy" && !value) {
+      searchParams.delete("_sort");
     } else if (key === "sortOrder" && value) {
       searchParams.set("_order", value);
+    } else if (key === "sortOrder" && !value) {
+      searchParams.delete("_order");
+    } else if (key === "isPromoted" && value) {
+      searchParams.set("is_promoted", "1");
+    } else if (key === "isPromoted" && !value) {
+      searchParams.delete("is_promoted");
+    } else if (key === "isSharable" && value) {
+      searchParams.set("is_sharable", "1");
+    } else if (key === "isSharable" && !value) {
+      searchParams.delete("is_sharable");
     }
 
-    // Update the URL with only the selected filter
+    // Update the URL with the modified query parameters
     navigate({
       pathname: "/stores", // Ensure this is the base URL for stores
       search: searchParams.toString(), // Pass only the modified query parameters
     });
 
-    // Pass the updated filters back to the parent if needed
+    // Trigger the parent callback to update the state (if necessary)
     onChange(updatedFilters);
+  };
+
+  const handleSearchChange = (e) => {
+    setFilters((prevFilters) => {
+      const updatedFilters = { ...prevFilters, search: e.target.value };
+      return updatedFilters;
+    });
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      const searchTerm = filters.search.trim();
+      if (searchTerm !== "") {
+        handleFilterChange("search", searchTerm);
+      } else {
+        // If the search term is empty, remove the search query from the URL
+        handleFilterChange("search", "");
+      }
+    }
+  };
+
+  const handleClearSearch = () => {
+    setFilters((prevFilters) => {
+      const clearedFilters = { ...prevFilters, search: "" };
+      onChange(clearedFilters); // Trigger parent callback to fetch data
+      return clearedFilters;
+    });
+    navigate("/"); // Redirect to base route
   };
 
   return (
@@ -87,13 +139,22 @@ const Filters = ({ categories, onChange }) => {
           <option value="trash">Trash</option>
         </select>
 
-        <input
-          type="text"
-          placeholder="Search by name"
-          value={filters.search}
-          onChange={(e) => handleFilterChange("search", e.target.value)}
-          className="border p-2 rounded-md w-full"
-        />
+        <div className="relative w-full">
+          <input
+            type="text"
+            placeholder="Search by name"
+            value={filters.search}
+            onChange={handleSearchChange}
+            onKeyPress={handleKeyPress} // Listen for "Enter" key press
+            className="border p-2 rounded-md w-full"
+          />
+          <button
+            onClick={handleClearSearch}
+            className="absolute top-1/2 right-2 transform -translate-y-1/2 text-gray-500"
+          >
+            &times;
+          </button>
+        </div>
 
         <select
           value={filters.sortBy}
@@ -105,65 +166,29 @@ const Filters = ({ categories, onChange }) => {
           <option value="featured">Featured</option>
           <option value="cashback">Cashback</option>
         </select>
-
-        {(filters.sortBy === "featured" ||
-          filters.sortBy === "clicks" ||
-          filters.sortBy === "cashback") && (
-          <select
-            value={filters.sortOrder}
-            onChange={(e) => handleFilterChange("sortOrder", e.target.value)}
-            className="border p-2 rounded-md w-full"
-          >
-            <option value="asc">Ascending</option>
-            <option value="desc">Descending</option>
-          </select>
-        )}
       </div>
 
-      <div className="">
-        {/* Alphabetical buttons */}
-        <div className="flex flex-wrap gap-1">
-          {[
-            "a",
-            "b",
-            "c",
-            "d",
-            "e",
-            "f",
-            "g",
-            "h",
-            "i",
-            "j",
-            "k",
-            "l",
-            "m",
-            "n",
-            "o",
-            "p",
-            "q",
-            "r",
-            "s",
-            "t",
-            "u",
-            "v",
-            "w",
-            "x",
-            "y",
-            "z",
-          ].map((letter) => (
-            <button
-              key={letter}
-              onClick={() => handleFilterChange("alphabet", letter)}
-              className={`py-2 px-3 rounded-md border ${
-                filters.alphabet === letter
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-200 text-gray-700"
-              } hover:bg-blue-400 hover:text-white focus:outline-none`}
-            >
-              {letter.toUpperCase()}
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-wrap gap-1">
+        {/* Alphabetical Filter */}
+        {!filters.search &&
+          [...Array(26)].map((_, i) => {
+            const letter = String.fromCharCode(65 + i); // Generate A-Z (Uppercase for display)
+            const lowerCaseLetter = letter.toLowerCase(); // Convert to lowercase for the query param
+
+            return (
+              <button
+                key={lowerCaseLetter}
+                onClick={() => handleFilterChange("alphabet", lowerCaseLetter)}
+                className={`py-2 px-3 rounded-md border ${
+                  filters.alphabet === lowerCaseLetter
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-200 text-gray-700"
+                } hover:bg-blue-400 hover:text-white focus:outline-none`}
+              >
+                {letter} {/* Display in uppercase */}
+              </button>
+            );
+          })}
       </div>
 
       <div className="flex gap-10">
@@ -196,7 +221,7 @@ const Filters = ({ categories, onChange }) => {
             onChange={(e) => handleFilterChange("isSharable", e.target.checked)}
             className="h-5 w-5"
           />
-          <span>Shareable Stores</span>
+          <span>Sharable Stores</span>
         </label>
       </div>
     </div>

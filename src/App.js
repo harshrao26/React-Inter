@@ -7,8 +7,6 @@ import Categories from "./Components/Categories";
 import AllStores from "./Components/AllStores";
 import Filters from "./Components/Filters";
 
-import { useLocation } from "react-router-dom";
-
 const user = {
   name: "Tom Cook",
   email: "tom@example.com",
@@ -28,7 +26,6 @@ export default function App() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  const location = useLocation();
 
   useEffect(() => {
     const fetchCategories = async () => {
