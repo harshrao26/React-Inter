@@ -7,18 +7,18 @@ const Categories = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Fetch categories from the API using Axios
+    // Fetch categories
     const fetchCategories = async () => {
       try {
         const response = await axios.get("http://localhost:3001/categories");
 
-        // Filter out duplicate categories based on `id`
+        // Filter duplicates
         const uniqueCategories = response.data.filter(
           (category, index, self) =>
             index === self.findIndex((c) => c.id === category.id)
         );
 
-        setCategories(uniqueCategories); // Set unique categories
+        setCategories(uniqueCategories);
       } catch (err) {
         setError(err.message || "An error occurred while fetching categories.");
       } finally {
@@ -43,7 +43,7 @@ const Categories = () => {
       <ul className="space-y-4 w-64">
         {categories.map((category) => (
           <li
-            key={category.id} // Ensure `id` is unique
+            key={category.id}
             className="flex items-center p-4 border rounded hover:shadow"
           >
             <img
@@ -53,9 +53,6 @@ const Categories = () => {
             />
             <div>
               <h3 className="font-medium">{category.name}</h3>
-              {/* <p className="text-sm text-gray-500">
-                {category.store_count} stores • {category.visits} visits
-              </p> */}
             </div>
           </li>
         ))}
