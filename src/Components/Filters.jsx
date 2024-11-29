@@ -6,7 +6,7 @@ const Filters = ({ categories, onChange }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [filters, setFilters] = useState({
+  const defaultFilters = {
     status: "",
     search: "",
     sortBy: "name",
@@ -14,7 +14,9 @@ const Filters = ({ categories, onChange }) => {
     cashbackEnabled: false,
     isPromoted: false,
     isSharable: false,
-  });
+  };
+
+  const [filters, setFilters] = useState(defaultFilters);
 
   // Parse query parameters and set initial filter values
   useEffect(() => {
@@ -38,12 +40,15 @@ const Filters = ({ categories, onChange }) => {
     if (newFilters.status) params.set("status", newFilters.status);
     if (newFilters.search) params.set("name_like", newFilters.search);
     if (newFilters.sortBy) params.set("_sort", newFilters.sortBy);
-    if (newFilters.alphabet) params.set("alphabet", newFilters.alphabet);
+    if (newFilters.alphabet) {
+      // Modify alphabet to name_like=^a for example
+      params.set("name_like", `^${newFilters.alphabet}`);
+    }
     if (newFilters.cashbackEnabled) params.set("cashback_enabled", "1");
     if (newFilters.isPromoted) params.set("is_promoted", "1");
     if (newFilters.isSharable) params.set("is_sharable", "1");
 
-    navigate(`?${params.toString()}`);
+    navigate(`/stores?${params.toString()}`);
   };
 
   // Handle filter changes
@@ -51,6 +56,7 @@ const Filters = ({ categories, onChange }) => {
     const updatedFilters = { ...filters, [key]: value };
     setFilters(updatedFilters);
     updateURL(updatedFilters);
+    onChange(updatedFilters);
   };
 
   const handleSearchChange = (e) => {
@@ -65,6 +71,13 @@ const Filters = ({ categories, onChange }) => {
     if (e.key === "Enter") {
       updateURL(filters);
     }
+  };
+
+  // Clear all filters
+  const handleClearAll = () => {
+    setFilters(defaultFilters);
+    navigate("/stores"); // Reset URL to `/stores`
+    onChange(defaultFilters); // Inform parent of the change
   };
 
   // Fetch stores when filters change
@@ -186,9 +199,16 @@ const Filters = ({ categories, onChange }) => {
           />
           <span>Sharable Stores</span>
         </label>
+        <button
+          onClick={handleClearAll}
+          className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
+        >
+          Clear All Filters
+        </button>
       </div>
     </div>
   );
 };
 
 export default Filters;
+
